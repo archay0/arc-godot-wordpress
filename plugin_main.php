@@ -78,7 +78,10 @@ function godot_game_handle_upload() {
 
 // shortcode here
 function godot_game_shortcode($atts) {
-    $atts = shortcode_atts(array('arc_embed' => ''), $atts, 'godot_game');
+    $atts = shortcode_atts([
+        'arc_embed' => ''
+    ], $atts, 'godot_game');
+    
     $gameSlug = sanitize_title($atts['arc_embed']);
     $gameDirectory = WP_CONTENT_DIR . '/godot_games/' . $gameSlug; // Correct file system path
     $gameURL = content_url('/godot_games/' . $gameSlug . '/game.html'); // URL to access via web
@@ -88,30 +91,31 @@ function godot_game_shortcode($atts) {
         return 'Invalid game path!';
     }
 
-    // Ensure the file exists before trying to embed it
-    if (file_exists($gameDirectory . '/game.html')) {
-        $output = '<div id="godot-game-container" style="width: 100%; height: 80vh; overflow: hidden;">';
-        $output .= '<iframe id="godot-game-iframe" src="' . esc_url($gameURL) . '" style="width: 100%; height: 100%; border: none;" allowfullscreen></iframe>';
-        $output .= '<button onclick="toggleFullScreen();" style="position: absolute; bottom: 10px; right: 10px; z-index: 1000; padding: 5px 10px;">Toggle Fullscreen</button>';
-        $output .= '</div>';
-        $output .= '<script>
-            function toggleFullScreen() {
-                var iframe = document.getElementById("godot-game-iframe");
-                if (!document.fullscreenElement) {
-                    iframe.requestFullscreen().catch(err => {
-                        alert(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
-                    });
-                } else {
-                    if (document.exitFullscreen) {
-                        document.exitFullscreen();
-                    }
-                }
-            }
-        </script>';
-        return $output;
-    } else {
+    // Ensure the game.html file exists before trying to embed it
+    if (!file_exists($gameDirectory . '/game.html')) {
         return 'Game does not exist!';
     }
+
+    // Output the iframe to embed the game
+    $output = '<div id="godot-game-container" style="width: 100%; height: 80vh; overflow: hidden;">';
+    $output .= '<iframe id="godot-game-iframe" src="' . esc_url($gameURL) . '" style="width: 100%; height: 100%; border: none;" allowfullscreen></iframe>';
+    $output .= '<button onclick="toggleFullScreen();" style="position: absolute; bottom: 10px; right: 10px; z-index: 1000; padding: 5px 10px;">Toggle Fullscreen</button>';
+    $output .= '</div>';
+    $output .= '<script>
+        function toggleFullScreen() {
+            var iframe = document.getElementById("godot-game-iframe");
+            if (!document.fullscreenElement) {
+                iframe.requestFullscreen().catch(err => {
+                    alert(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+    </script>';
+    return $output;
 }
 add_shortcode('godot_game', 'godot_game_shortcode');
 
