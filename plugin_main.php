@@ -84,15 +84,25 @@ function godot_game_shortcode($atts) {
     
     $gameSlug = sanitize_title($atts['arc_embed']);
     $gameDirectory = WP_CONTENT_DIR . '/godot_games/' . $gameSlug; // Correct file system path
-    $gameURL = content_url('/godot_games/' . $gameSlug . '/game.html'); // URL to access via web
 
     // Security check to ensure directory traversal is not possible
     if (strpos($gameSlug, '..') !== false || strpos($gameSlug, '/') !== false) {
         return 'Invalid game path!';
     }
 
-    // Ensure the game.html file exists before trying to embed it
-    if (!file_exists($gameDirectory . '/game.html')) {
+    // Search for the game.html file one directory deeper
+    $gameHTMLFound = false;
+    $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($gameDirectory, RecursiveDirectoryIterator::SKIP_DOTS));
+    foreach ($iterator as $file) {
+        if (strtolower($file->getFilename()) === 'game.html') {
+            $gameHTMLFound = true;
+            $gameURL = content_url(str_replace(WP_CONTENT_DIR, '', $file->getPathname())); // Convert file system path to URL
+            break;
+        }
+    }
+
+    // Check if the game.html file was found
+    if (!$gameHTMLFound) {
         return 'Game does not exist!';
     }
 
