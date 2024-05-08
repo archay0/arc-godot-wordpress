@@ -26,7 +26,7 @@ function godot_game_handle_upload() {
 
     $uploadedfile = $_FILES['godot_game_zip'] ?? null;
     if (!$uploadedfile) {
-        echo '<p style="color: red;">No file selected.</p>';
+        echo '<p style="color: red;">Select a file buddy.</p>';
         return;
     }
 
@@ -76,39 +76,41 @@ function godot_game_handle_upload() {
     }
 }
 
-// shortcode here
 function godot_game_shortcode($atts) {
     $atts = shortcode_atts([
         'arc_embed' => ''
     ], $atts, 'godot_game');
     
     $gameSlug = sanitize_title($atts['arc_embed']);
-    $gameDirectory = WP_CONTENT_DIR . '/godot_games/' . $gameSlug; // Correct file system path
+    $gameDirectory = WP_CONTENT_DIR . '/godot_games/' . $gameSlug; 
 
-    // Security check to ensure directory traversal is not possible
+    
     if (strpos($gameSlug, '..') !== false || strpos($gameSlug, '/') !== false) {
         return 'Invalid game path!';
     }
 
-    // Search for the game.html file one directory deeper
+    
     $gameHTMLFound = false;
     $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($gameDirectory, RecursiveDirectoryIterator::SKIP_DOTS));
     foreach ($iterator as $file) {
         if (strtolower($file->getFilename()) === 'game.html') {
             $gameHTMLFound = true;
-            $gameURL = content_url(str_replace(WP_CONTENT_DIR, '', $file->getPathname())); // Convert file system path to URL
+            $gamePath = str_replace(WP_CONTENT_DIR, '', $file->getPathname()); 
             break;
         }
     }
 
-    // Check if the game.html file was found
+    
     if (!$gameHTMLFound) {
         return 'Game does not exist!';
     }
 
-    // Output the iframe to embed the game
+    // reverse-proxy implementation
+    $proxy_url = home_url('/wp-json/godot/v1/game-proxy/?game_path=' . urlencode($gamePath));
+
+    
     $output = '<div id="godot-game-container" style="width: 100%; height: 80vh; overflow: hidden;">';
-    $output .= '<iframe id="godot-game-iframe" src="' . esc_url($gameURL) . '" style="width: 100%; height: 100%; border: none;" allowfullscreen></iframe>';
+    $output .= '<iframe id="godot-game-iframe" src="' . esc_url($proxy_url) . '" style="width: 100%; height: 100%; border: none;" allowfullscreen></iframe>';
     $output .= '<button onclick="toggleFullScreen();" style="position: absolute; bottom: 10px; right: 10px; z-index: 1000; padding: 5px 10px;">Toggle Fullscreen</button>';
     $output .= '</div>';
     $output .= '<script>
@@ -129,12 +131,13 @@ function godot_game_shortcode($atts) {
 }
 add_shortcode('godot_game', 'godot_game_shortcode');
 
+
 // admin page
 function godot_game_admin_page() {
     echo '<div class="wrap" style="padding: 20px; background-color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">';
     echo '<h2 style="font-size: 24px; font-weight: 400; color: #555;">Godot Game Embedder</h2>';
 
-    // Handle POST requests
+    
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!empty($_POST['action'])) {
             godot_game_handle_upload();
@@ -144,14 +147,14 @@ function godot_game_admin_page() {
         }
     }
 
-    // Form for uploading games
+    
     echo '<form method="post" action="" action-del="" enctype="multipart/form-data">';
     echo '<input type="text" name="game_title" id="game_title" placeholder="Game Title" required style="width: 100%; margin-bottom: 10px;">';
     echo '<input type="file" name="godot_game_zip" id="godot_game_zip" required style="margin-bottom: 10px;">';
     echo '<input type="submit" name="action" value="Upload .zip" class="button button-primary">';
     echo '</form>';
 
-    // List uploaded games
+    
     if ($games = scandir(GODOT_GAMES_DIR)) {
         $games = array_diff($games, ['..', '.']);
         if (!empty($games)) {
@@ -178,7 +181,7 @@ function godot_game_handle_delete($game_name) {
     $game_dir = GODOT_GAMES_DIR . '/' . sanitize_title($game_name);
     
     if (is_dir($game_dir)) {
-        // Properly delete directories and files recursively
+        
         $files = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($game_dir, RecursiveDirectoryIterator::SKIP_DOTS),
             RecursiveIteratorIterator::CHILD_FIRST
@@ -192,7 +195,7 @@ function godot_game_handle_delete($game_name) {
         rmdir($game_dir);
 
         echo '<p style="color: green;">Game ' . esc_html($game_name) . ' deleted successfully.</p>';
-        // Refresh the page to show the updated list of games
+        
         echo '<script>window.location.href = "' . esc_url(admin_url('admin.php?page=godot-game-embedder')) . '";</script>';
     } else {
         echo '<p style="color: red;">Failed to delete the game. Directory not found.</p>';
@@ -213,3 +216,33 @@ function add_godot_game_headers() {
     }
 }
 add_action('template_redirect', 'add_godot_game_headers');
+
+
+// PHP reverse proxy to circumvent coep
+
+function godot_games_proxy() {
+    
+    $game_id = isset($_GET['game']) ? sanitize_text_field($_GET['game']) : exit('No game specified');
+
+    
+    $file_path = locate_godot_game_file($game_id);
+
+    
+    $file_info = new finfo(FILEINFO_MIME_TYPE);
+    $mime_type = $file_info->file($file_path);
+
+    
+    header("Content-Type: $mime_type");
+    header("Cross-Origin-Embedder-Policy: require-corp");
+    header("Cross-Origin-Opener-Policy: same-origin");
+
+    
+    readfile($file_path);
+    exit;
+}
+add_action('rest_api_init', function () {
+    register_rest_route('godot/v1', '/game-proxy/', array(
+        'methods' => 'GET',
+        'callback' => 'godot_games_proxy',
+    ));
+});
