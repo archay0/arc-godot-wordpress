@@ -129,7 +129,7 @@ function godot_game_shortcode($atts) {
 }
 add_shortcode('godot_game', 'godot_game_shortcode');
 
-
+// admin page
 function godot_game_admin_page() {
     echo '<div class="wrap" style="padding: 20px; background-color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">';
     echo '<h2 style="font-size: 24px; font-weight: 400; color: #555;">Godot Game Embedder</h2>';
@@ -172,6 +172,8 @@ function godot_game_admin_page() {
     echo '</div>';
 }
 
+
+// handle delete
 function godot_game_handle_delete($game_name) {
     $game_dir = GODOT_GAMES_DIR . '/' . sanitize_title($game_name);
     
@@ -200,3 +202,14 @@ function godot_game_handle_delete($game_name) {
 add_action('admin_menu', function() {
     add_menu_page('Godot Game Embedder', 'Godot Games', 'manage_options', 'godot-game-embedder', 'godot_game_admin_page', 'dashicons-games');
 });
+
+
+// header mod for coop and coerp
+
+function add_godot_game_headers() {
+    if (is_page() && has_shortcode(get_post()->post_content, 'godot_game')) {
+        header("Cross-Origin-Embedder-Policy: require-corp");
+        header("Cross-Origin-Opener-Policy: same-origin");
+    }
+}
+add_action('template_redirect', 'add_godot_game_headers');
