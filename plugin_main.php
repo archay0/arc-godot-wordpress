@@ -19,24 +19,28 @@ register_activation_hook(__FILE__, function() {
 });
 
 // end setup code
-
 function godot_game_handle_upload() {
     if (!function_exists('wp_handle_upload')) {
         require_once(ABSPATH . 'wp-admin/includes/file.php');
     }
 
-    $uploadedfile = $_FILES['godot_game_zip'] ?? null; // Handle no file selected case
+    $uploadedfile = $_FILES['godot_game_zip'] ?? null;
     if (!$uploadedfile) {
         echo '<p style="color: red;">No file selected.</p>';
         return;
     }
 
-    $upload_overrides = array('test_form' => false);
+    if ($uploadedfile['type'] != 'application/zip') {
+        echo '<p style="color: red;">Invalid file type. Only ZIP files are allowed.</p>';
+        return;
+    }
+
+    $upload_overrides = ['test_form' => false];
     $game_title = sanitize_title($_POST['game_title']);
     $game_dir = GODOT_GAMES_DIR . '/' . $game_title;
 
     if (!is_dir($game_dir) && !mkdir($game_dir, 0777, true) && !is_dir($game_dir)) {
-        echo '<p style="color: red;">Failed to create directory.</p>';
+        echo '<p style="color: red;">Failed to create game directory.</p>';
         return;
     }
 
@@ -49,11 +53,20 @@ function godot_game_handle_upload() {
             $zip->close();
             echo "<p style='color: green;'>Game uploaded and unpacked successfully to " . esc_html($game_dir) . ".</p>";
 
-            // Check for index.html
-            if (file_exists($game_dir . '/index.html')) {
-                echo "<p style='color: green;'>Game is valid. 'index.html' found.</p>";
+            $index_found = false;
+            $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($game_dir, RecursiveDirectoryIterator::SKIP_DOTS));
+            foreach ($iterator as $file) {
+                if (strtolower($file->getFilename()) === 'game.html') {
+                    $index_found = true;
+                    $index_path = $file->getPathname();
+                    break;
+                }
+            }
+
+            if ($index_found) {
+                echo "<p style='color: green;'>Game is valid.</p>";
             } else {
-                echo "<p style='color: red;'>Game is invalid. 'index.html' not found.</p>";
+                echo "<p style='color: red;'>Game is invalid. 'game.html' not found in any subdirectories.</p>";
             }
         } else {
             echo "<p style='color: red;'>Failed to unzip the game.</p>";
@@ -63,13 +76,12 @@ function godot_game_handle_upload() {
     }
 }
 
-
 // shortcode here
 function godot_game_shortcode($atts) {
     $atts = shortcode_atts(array('arc_embed' => ''), $atts, 'godot_game');
     $gameSlug = sanitize_title($atts['arc_embed']);
     $gameDirectory = WP_CONTENT_DIR . '/godot_games/' . $gameSlug; // Correct file system path
-    $gameURL = content_url('/godot_games/' . $gameSlug . '/index.html'); // URL to access via web
+    $gameURL = content_url('/godot_games/' . $gameSlug . '/game.html'); // URL to access via web
 
     // Security check to ensure directory traversal is not possible
     if (strpos($gameSlug, '..') !== false || strpos($gameSlug, '/') !== false) {
@@ -77,7 +89,7 @@ function godot_game_shortcode($atts) {
     }
 
     // Ensure the file exists before trying to embed it
-    if (file_exists($gameDirectory . '/index.html')) {
+    if (file_exists($gameDirectory . '/game.html')) {
         $output = '<div id="godot-game-container" style="width: 100%; height: 80vh; overflow: hidden;">';
         $output .= '<iframe id="godot-game-iframe" src="' . esc_url($gameURL) . '" style="width: 100%; height: 100%; border: none;" allowfullscreen></iframe>';
         $output .= '<button onclick="toggleFullScreen();" style="position: absolute; bottom: 10px; right: 10px; z-index: 1000; padding: 5px 10px;">Toggle Fullscreen</button>';
@@ -101,9 +113,7 @@ function godot_game_shortcode($atts) {
         return 'Game does not exist!';
     }
 }
-
 add_shortcode('godot_game', 'godot_game_shortcode');
-
 
 
 function godot_game_admin_page() {
@@ -135,7 +145,7 @@ function godot_game_admin_page() {
             echo '<tr><th>Name</th><th>Validity</th><th>Action</th></tr>';
             foreach ($games as $game) {
                 $game_dir = GODOT_GAMES_DIR . '/' . $game;
-                $index_exists = file_exists($game_dir . '/index.html') ? 'Found' : 'Not found';
+                $index_exists = file_exists($game_dir . '/game.html') ? 'Found' : 'Not found';
                 echo '<tr><td>' . esc_html($game) . '</td><td>' . $index_exists . '</td>';
                 echo '<td><form method="post"><input type="hidden" name="game_name" value="' . esc_attr($game) . '">';
                 echo '<button type="submit" name="action-del" value="delete_godot_game" class="button">Delete</button></form></td></tr>';
@@ -147,6 +157,7 @@ function godot_game_admin_page() {
     }
     echo '</div>';
 }
+
 function godot_game_handle_delete($game_name) {
     $game_dir = GODOT_GAMES_DIR . '/' . sanitize_title($game_name);
     
