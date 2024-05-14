@@ -12,6 +12,8 @@ defined('ABSPATH') or die('Access denied!');
 
 define('GODOT_GAMES_DIR', WP_CONTENT_DIR . '/godot_games/');
 
+
+
 register_activation_hook(__FILE__, function() {
     if (!is_dir(GODOT_GAMES_DIR)) {
         mkdir(GODOT_GAMES_DIR, 0777, true);
@@ -20,6 +22,15 @@ register_activation_hook(__FILE__, function() {
 
 require_once(plugin_dir_path(__FILE__) . 'workers/upload.php');
 require_once(plugin_dir_path(__FILE__) . 'workers/delete.php');
+
+// setup code for scripts and shit
+function enqueue_godot_game_scripts() {
+    wp_enqueue_script('godot-game-upload-handler', plugin_dir_url(__FILE__) . 'js/ajax-handler.js', array('jquery'), null, true);
+    wp_localize_script('godot-game-upload-handler', 'godotAjax', array('ajaxurl' => admin_url('admin-ajax.php')));
+}
+add_action('admin_enqueue_scripts', 'enqueue_godot_game_scripts');
+add_action('wp_ajax_godot_game_upload', 'godot_game_handle_upload');
+
 
 
 function godot_game_admin_page() {
@@ -41,6 +52,13 @@ function godot_game_admin_page() {
     echo '<input type="text" name="game_title" id="game_title" placeholder="Game Title" required style="width: 100%; margin-bottom: 10px;">';
     echo '<input type="file" name="godot_game_zip" id="godot_game_zip" required style="margin-bottom: 10px;">';
     echo '<input type="submit" name="action" value="Upload .zip" class="button button-primary">';
+    echo '</form>';
+
+    echo '<form id="upload-form" action="js/ajax-handler.js" method="post" enctype="multipart/form-data">';
+    echo '<input type="file" name="godot_game_zip" />';
+    echo '<input type="text" name="game_title" />';
+    echo '<progress id="progress-bar" value="0" max="100"></progress>';
+    echo '<button type="submit">Upload Game</button>';
     echo '</form>';
 
     

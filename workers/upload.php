@@ -1,62 +1,65 @@
 <?php
 
 
-
 function godot_game_handle_upload() {
+    // Ensure the necessary file handling function is available
     if (!function_exists('wp_handle_upload')) {
         require_once(ABSPATH . 'wp-admin/includes/file.php');
     }
 
-    $uploadedfile = $_FILES['godot_game_zip'] ?? null;
-    if (!$uploadedfile) {
-        echo '<p style="color: red;">Select a file buddy.</p>';
-        return;
-    }
+    // Handling AJAX request
+    if (wp_doing_ajax()) {
+        header('Content-Type: application/json');
+        
+        $uploadedfile = $_FILES['godot_game_zip'] ?? null;
+        if (!$uploadedfile) {
+            echo json_encode(['error' => 'No file selected.']);
+            wp_die();
+        }
 
-    if ($uploadedfile['type'] != 'application/zip') {
-        echo '<p style="color: red;">Invalid file type. Only ZIP files are allowed.</p>';
-        return;
-    }
+        if ($uploadedfile['type'] != 'application/zip') {
+            echo json_encode(['error' => 'Invalid file type. Only ZIP files are allowed.']);
+            wp_die();
+        }
 
-    $upload_overrides = ['test_form' => false];
-    $game_title = sanitize_title($_POST['game_title']);
-    $game_dir = GODOT_GAMES_DIR . '/' . $game_title;
+        $upload_overrides = ['test_form' => false];
+        $game_title = sanitize_title($_POST['game_title']);
+        $game_dir = GODOT_GAMES_DIR . '/' . $game_title;
 
-    if (!is_dir($game_dir) && !mkdir($game_dir, 0777, true) && !is_dir($game_dir)) {
-        echo '<p style="color: red;">Failed to create game directory.</p>';
-        return;
-    }
+        if (!is_dir($game_dir) && !mkdir($game_dir, 0777, true) && !is_dir($game_dir)) {
+            echo json_encode(['error' => 'Failed to create game directory.']);
+            wp_die();
+        }
 
-    $movefile = wp_handle_upload($uploadedfile, $upload_overrides);
+        $movefile = wp_handle_upload($uploadedfile, $upload_overrides);
 
-    if ($movefile && !isset($movefile['error'])) {
-        $zip = new ZipArchive;
-        if ($zip->open($movefile['file']) === TRUE) {
-            $zip->extractTo($game_dir);
-            $zip->close();
-            echo "<p style='color: green;'>Game uploaded and unpacked successfully to " . esc_html($game_dir) . ".</p>";
+        if ($movefile && !isset($movefile['error'])) {
+            $zip = new ZipArchive;
+            if ($zip->open($movefile['file']) === TRUE) {
+                $zip->extractTo($game_dir);
+                $zip->close();
 
-            $index_found = false;
-            $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($game_dir, RecursiveDirectoryIterator::SKIP_DOTS));
-            foreach ($iterator as $file) {
-                if (strtolower($file->getFilename()) === 'game.html') {
-                    $index_found = true;
-                    $index_path = $file->getPathname();
-                    break;
+                $index_found = false;
+                $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($game_dir, RecursiveDirectoryIterator::SKIP_DOTS));
+                foreach ($iterator as $file) {
+                    if (strtolower($file->getFilename()) === 'game.html') {
+                        $index_found = true;
+                        $index_path = $file->getPathname();
+                        break;
+                    }
                 }
-            }
 
-            if ($index_found) {
-                echo "<p style='color: green;'>Game is valid.</p>";
+                if ($index_found) {
+                    echo json_encode(['success' => 'Game uploaded and unpacked successfully.', 'path' => esc_html($game_dir)]);
+                } else {
+                    echo json_encode(['error' => 'Game is invalid. \'game.html\' not found in any subdirectories.']);
+                }
             } else {
-                echo "<p style='color: red;'>Game is invalid. 'game.html' not found in any subdirectories.</p>";
+                echo json_encode(['error' => 'Failed to unzip the game.']);
             }
         } else {
-            echo "<p style='color: red;'>Failed to unzip the game.</p>";
+            echo json_encode(['error' => $movefile['error'] ?? 'Unknown error occurred.']);
         }
-    } else {
-        echo "<p style='color: red;'>" . esc_html($movefile['error'] ?? 'Unknown error occurred.') . "</p>";
+        wp_die();
     }
 }
-
-
