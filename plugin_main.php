@@ -18,46 +18,40 @@ register_activation_hook(__FILE__, function() {
     }
 });
 
-
-require_once('./workers/upload.php');
-require_once('./workers/delete.php');
-require_once('./pages/adminpage.php');
-
-
+require_once(plugin_dir_path(__FILE__) . 'workers/upload.php');
+require_once(plugin_dir_path(__FILE__) . 'workers/delete.php');
+require_once(plugin_dir_path(__FILE__) . 'pages/adminpage.php');
 
 function godot_game_shortcode($atts) {
-    $atts = shortcode_atts([
+    $atts = shortcode_atts(array(
         'arc_embed' => ''
-    ], $atts, 'godot_game');
+    ), $atts, 'godot_game');
     
     $gameSlug = sanitize_title($atts['arc_embed']);
-    $gameDirectory = WP_CONTENT_DIR . '/godot_games/' . $gameSlug; 
+    $gameDirectory = GODOT_GAMES_DIR . $gameSlug; 
 
-    
     if (strpos($gameSlug, '..') !== false || strpos($gameSlug, '/') !== false) {
         return 'Invalid game path!';
     }
 
-    
     $gameHTMLFound = false;
-    $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($gameDirectory, RecursiveDirectoryIterator::SKIP_DOTS));
-    foreach ($iterator as $file) {
-        if (strtolower($file->getFilename()) === 'game.html') {
-            $gameHTMLFound = true;
-            $gamePath = str_replace(WP_CONTENT_DIR, '', $file->getPathname()); 
-            break;
+    if (is_dir($gameDirectory)) {
+        $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($gameDirectory, RecursiveDirectoryIterator::SKIP_DOTS));
+        foreach ($iterator as $file) {
+            if (strtolower($file->getFilename()) === 'game.html') {
+                $gameHTMLFound = true;
+                $gamePath = str_replace(WP_CONTENT_DIR, '', $file->getPathname()); 
+                break;
+            }
         }
     }
 
-    
     if (!$gameHTMLFound) {
         return 'Game does not exist!';
     }
 
-    // reverse-proxy implementation
     $proxy_url = home_url('/wp-json/godot/v1/game-proxy/?game_path=' . urlencode($gamePath));
 
-    
     $output = '<div id="godot-game-container" style="width: 100%; height: 80vh; overflow: hidden;">';
     $output .= '<iframe id="godot-game-iframe" src="' . esc_url($proxy_url) . '" style="width: 100%; height: 100%; border: none;" allowfullscreen></iframe>';
     $output .= '<button onclick="toggleFullScreen();" style="position: absolute; bottom: 10px; right: 10px; z-index: 1000; padding: 5px 10px;">Toggle Fullscreen</button>';
@@ -80,14 +74,9 @@ function godot_game_shortcode($atts) {
 }
 add_shortcode('godot_game', 'godot_game_shortcode');
 
-
-
 add_action('admin_menu', function() {
     add_menu_page('Godot Game Embedder', 'Godot Games', 'manage_options', 'godot-game-embedder', 'godot_game_admin_page', 'dashicons-games');
 });
-
-
-// header mod for coop and coerp
 
 function add_godot_game_headers() {
     if (is_page() && has_shortcode(get_post()->post_content, 'godot_game')) {
@@ -97,26 +86,25 @@ function add_godot_game_headers() {
 }
 add_action('template_redirect', 'add_godot_game_headers');
 
-
-// PHP reverse proxy to circumvent coep
+function locate_godot_game_file($game_id) {
+    $file_path = WP_CONTENT_DIR . '/godot_games/' . $game_id;
+    if (!file_exists($file_path)) {
+        exit('File not found');
+    }
+    return $file_path;
+}
 
 function godot_games_proxy() {
-    
-    $game_id = isset($_GET['game']) ? sanitize_text_field($_GET['game']) : exit('No game specified');
+    $game_path = isset($_GET['game_path']) ? sanitize_text_field($_GET['game_path']) : exit('No game specified');
+    $file_path = locate_godot_game_file($game_path);
 
-    
-    $file_path = locate_godot_game_file($game_id);
-
-    
     $file_info = new finfo(FILEINFO_MIME_TYPE);
     $mime_type = $file_info->file($file_path);
 
-    
     header("Content-Type: $mime_type");
     header("Cross-Origin-Embedder-Policy: require-corp");
     header("Cross-Origin-Opener-Policy: same-origin");
 
-    
     readfile($file_path);
     exit;
 }
