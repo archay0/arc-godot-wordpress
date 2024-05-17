@@ -155,14 +155,10 @@ function godot_game_admin_page() {
     </script>';
 }
 
-add_action('admin_menu', function() {
-    add_menu_page('Godot Game Embedder', 'Godot Game Embedder', 'manage_options', 'godot-game-embedder', 'godot_game_admin_page');
-});
-
 
 
 add_action('admin_menu', function() {
-    add_menu_page('Godot Game Embedder', 'Godot Games', 'manage_options', 'godot-game-embedder', 'godot_game_admin_page', 'dashicons-games');
+    add_menu_page('Arc Godot', 'Godot Games', 'manage_options', 'godot-game-embedder', 'godot_game_admin_page', 'dashicons-games');
 });
 
 function add_godot_game_headers() {
