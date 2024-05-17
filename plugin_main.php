@@ -172,31 +172,31 @@ function add_godot_game_headers() {
 }
 add_action('template_redirect', 'add_godot_game_headers');
 
-function locate_godot_game_file($game_id) {
-    $file_path = WP_CONTENT_DIR . '/godot_games/' . $game_id;
-    if (!file_exists($file_path)) {
-        exit('File not found');
-    }
-    return $file_path;
-}
 
-function godot_games_proxy() {
-    $game_path = isset($_GET['game_path']) ? sanitize_text_field($_GET['game_path']) : exit('No game specified');
-    $file_path = locate_godot_game_file($game_path);
-
-    $file_info = new finfo(FILEINFO_MIME_TYPE);
-    $mime_type = $file_info->file($file_path);
-
-    header("Content-Type: $mime_type");
-    header("Cross-Origin-Embedder-Policy: require-corp");
-    header("Cross-Origin-Opener-Policy: same-origin");
-
-    readfile($file_path);
-    exit;
-}
 add_action('rest_api_init', function () {
     register_rest_route('godot/v1', '/game-proxy/', array(
         'methods' => 'GET',
-        'callback' => 'godot_games_proxy',
+        'callback' => 'godot_game_proxy',
     ));
 });
+
+function godot_game_proxy(WP_REST_Request $request) {
+    $game_path = $request->get_param('game_path');
+    if (strpos($game_path, '..') !== false) {
+        return new WP_REST_Response('Invalid path', 400);
+    }
+
+    $full_path = WP_CONTENT_DIR . $game_path;
+
+    if (!file_exists($full_path)) {
+        return new WP_REST_Response('File not found', 404);
+    }
+
+    $mime_type = mime_content_type($full_path);
+    header('Content-Type: ' . $mime_type);
+    header('Cross-Origin-Embedder-Policy: require-corp');
+    header('Cross-Origin-Opener-Policy: same-origin');
+    header('Cross-Origin-Resource-Policy: same-origin');
+    readfile($full_path);
+    exit;
+}
