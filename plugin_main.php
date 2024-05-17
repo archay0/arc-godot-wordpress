@@ -58,29 +58,26 @@ function godot_game_admin_page() {
     echo '<table id="games-table">';
     echo '<thead><tr><th>Name</th><th>Validity</th><th>Action</th></tr></thead>';
     echo '<tbody>';
-    if ($games = scandir(WP_CONTENT_DIR . '/godot_games')) {
+    if ($games = scandir(GODOT_GAMES_DIR)) {
         $games = array_diff($games, ['..', '.']);
         if (!empty($games)) {
+            echo '<h2 style="font-size: 20px; color: #555; margin-bottom: 10px;">Uploaded Games</h2>';
+            echo '<table>';
+            echo '<thead><tr><th>Name</th><th>Validity</th><th>Action</th></tr></thead>';
+            echo '<tbody>';
             foreach ($games as $game) {
-                $game_dir = WP_CONTENT_DIR . '/godot_games/' . $game;
-                $index_found = false;
-                $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($game_dir, RecursiveDirectoryIterator::SKIP_DOTS));
-                foreach ($iterator as $file) {
-                    if (strtolower($file->getFilename()) === 'game.html') {
-                        $index_found = true;
-                        break;
-                    }
-                }
-                $validity = $index_found ? 'Valid' : 'Invalid';
-                echo '<tr><td>' . esc_html($game) . '</td><td>' . $validity . '</td>';
-                echo '<td><button class="delete-button" data-game="' . esc_attr($game) . '">Delete</button></td></tr>';
+                $game_dir = GODOT_GAMES_DIR . '/' . $game;
+                $index_exists = file_exists($game_dir . '/game.html') ? 'Valid' : 'Invalid';
+                echo '<tr><td>' . esc_html($game) . '</td><td>' . $index_exists . '</td>';
+                echo '<td><form method="post"><input type="hidden" name="game_name" value="' . esc_attr($game) . '">';
+                echo '<input type="submit" name="action-del" value="Delete" class="button button-secondary"></form></td></tr>';
             }
+            echo '</tbody>';
+            echo '</table>';
         } else {
-            echo '<tr><td colspan="3">No games available.</td></tr>';
+            echo '<p>No games available.</p>';
         }
     }
-    echo '</tbody>';
-    echo '</table>';
     echo '</div>';
 
     // js
