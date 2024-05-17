@@ -30,6 +30,7 @@ add_action('wp_ajax_godot_game_upload', 'godot_game_handle_upload');
 add_action('wp_ajax_godot_game_delete', 'godot_game_handle_delete');
 
 // shortcode add to main
+
 add_shortcode('godot_game', 'godot_game_shortcode');
 
 

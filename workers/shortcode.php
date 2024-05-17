@@ -8,7 +8,7 @@ function godot_game_shortcode($atts) {
     $gameSlug = sanitize_title($atts['arc_embed']);
     $gameDirectory = WP_PLUGIN_DIR . '/godot-game-embedder/godot-games/' . $gameSlug;
 
-    // check dir
+    // Security check for directory traversal
     if (strpos($gameSlug, '..') !== false || strpos($gameSlug, '/') !== false) {
         return 'Invalid game path!';
     }
@@ -51,4 +51,3 @@ function godot_game_shortcode($atts) {
     </script>';
     return $output;
 }
-
