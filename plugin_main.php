@@ -24,64 +24,83 @@ require_once(plugin_dir_path(__FILE__) . 'workers/upload.php');
 require_once(plugin_dir_path(__FILE__) . 'workers/delete.php');
 
 // setup code for scripts and shit
-function enqueue_godot_game_scripts() {
-    wp_enqueue_script('godot-game-upload-handler', plugin_dir_url(__FILE__) . 'js/ajax-handler.js', array('jquery'), null, true);
-    wp_localize_script('godot-game-upload-handler', 'godotAjax', array('ajaxurl' => admin_url('admin-ajax.php')));
-}
-add_action('admin_enqueue_scripts', 'enqueue_godot_game_scripts');
 add_action('wp_ajax_godot_game_upload', 'godot_game_handle_upload');
 
 
-
 function godot_game_admin_page() {
-    echo '<div class="wrap" style="padding: 20px; background-color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">';
-    echo '<h2 style="font-size: 24px; font-weight: 400; color: #555;">Godot Game Embedder</h2>';
+    echo '<div class="wrap" style="padding: 20px; background-color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 960px; margin: 20px auto;">';
+    echo '<h1 style="font-size: 24px; font-weight: bold; color: #333; margin-bottom: 20px;">Godot Game Embedder</h1>';
 
-    
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        if (!empty($_POST['action'])) {
-            godot_game_handle_upload();
-        }
-        if (!empty($_POST['action-del'])) {
-            godot_game_handle_delete($_POST['game_name']);
-        }
-    }
+    echo '<style>
+        .godot-form { margin-bottom: 40px; }
+        .godot-input, .godot-button { width: 100%; padding: 10px; box-sizing: border-box; margin-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; border: 1px solid #ddd; }
+        th { background-color: #f4f4f4; }
+    </style>';
 
-    
-    echo '<form method="post" action="" action-del="" enctype="multipart/form-data">';
-    echo '<input type="text" name="game_title" id="game_title" placeholder="Game Title" required style="width: 100%; margin-bottom: 10px;">';
-    echo '<input type="file" name="godot_game_zip" id="godot_game_zip" required style="margin-bottom: 10px;">';
-    echo '<input type="submit" name="action" value="Upload .zip" class="button button-primary">';
+    // Upload form
+    echo '<form id="upload-form" method="post" enctype="multipart/form-data">';
+    echo '<input type="text" name="game_title" id="game_title" placeholder="Game Title" required class="godot-input">';
+    echo '<input type="file" name="godot_game_zip" id="godot_game_zip" required class="godot-input">';
+    echo '<progress id="progress-bar" value="0" max="100" style="width: 100%;"></progress>'; // Progress bar
+    echo '<input type="button" id="upload-button" value="Upload .zip" class="godot-button button button-primary">';
     echo '</form>';
 
-    echo '<form id="upload-form" action="js/ajax-handler.js" method="post" enctype="multipart/form-data">';
-    echo '<input type="file" name="godot_game_zip" />';
-    echo '<input type="text" name="game_title" />';
-    echo '<progress id="progress-bar" value="0" max="100"></progress>';
-    echo '<button type="submit">Upload Game</button>';
-    echo '</form>';
-
-    
+    // List of games
     if ($games = scandir(GODOT_GAMES_DIR)) {
         $games = array_diff($games, ['..', '.']);
         if (!empty($games)) {
-            echo '<h3>Uploaded Games</h3><table style="width: 100%; margin-top: 20px; text-align: left;">';
-            echo '<tr><th>Name</th><th>Validity</th><th>Action</th></tr>';
+            echo '<h2 style="font-size: 20px; color: #555; margin-bottom: 10px;">Uploaded Games</h2>';
+            echo '<table>';
+            echo '<thead><tr><th>Name</th><th>Validity</th><th>Action</th></tr></thead>';
+            echo '<tbody>';
             foreach ($games as $game) {
                 $game_dir = GODOT_GAMES_DIR . '/' . $game;
-                $index_exists = file_exists($game_dir . '/game.html') ? 'Found' : 'Not found';
+                $index_exists = file_exists($game_dir . '/game.html') ? 'Valid' : 'Invalid';
                 echo '<tr><td>' . esc_html($game) . '</td><td>' . $index_exists . '</td>';
                 echo '<td><form method="post"><input type="hidden" name="game_name" value="' . esc_attr($game) . '">';
-                echo '<button type="submit" name="action-del" value="delete_godot_game" class="button">Delete</button></form></td></tr>';
+                echo '<input type="submit" name="action-del" value="Delete" class="button button-secondary"></form></td></tr>';
             }
+            echo '</tbody>';
             echo '</table>';
         } else {
             echo '<p>No games available.</p>';
         }
     }
     echo '</div>';
-}
 
+    echo '<script>
+    document.getElementById("upload-button").addEventListener("click", function() {
+        var form = document.getElementById("upload-form");
+        var formData = new FormData(form);
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "' . admin_url('admin-ajax.php?action=godot_game_upload') . '", true);
+
+        xhr.upload.onprogress = function(event) {
+            if (event.lengthComputable) {
+                var percentComplete = (event.loaded / event.total) * 100;
+                document.getElementById("progress-bar").value = percentComplete;
+            }
+        };
+
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                var response = JSON.parse(xhr.responseText);
+                if (response.success) {
+                    alert("Upload successful!");
+                } else {
+                    alert("Error: " + response.error);
+                }
+            } else {
+                alert("An error occurred during the upload. Please try again.");
+            }
+        };
+
+        xhr.send(formData);
+    });
+    </script>';
+}
 
 
 function godot_game_shortcode($atts) {

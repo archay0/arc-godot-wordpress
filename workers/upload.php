@@ -1,6 +1,5 @@
 <?php
 
-
 function godot_game_handle_upload() {
     // Ensure the necessary file handling function is available
     if (!function_exists('wp_handle_upload')) {
@@ -10,7 +9,7 @@ function godot_game_handle_upload() {
     // Handling AJAX request
     if (wp_doing_ajax()) {
         header('Content-Type: application/json');
-        
+
         $uploadedfile = $_FILES['godot_game_zip'] ?? null;
         if (!$uploadedfile) {
             echo json_encode(['error' => 'No file selected.']);
