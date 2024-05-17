@@ -26,6 +26,7 @@ require_once(plugin_dir_path(__FILE__) . 'workers/delete.php');
 // setup code for scripts and shit
 add_action('wp_ajax_godot_game_upload', 'godot_game_handle_upload');
 
+
 function godot_game_admin_page() {
     echo '<div class="wrap" style="padding: 20px; background-color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 960px; margin: 20px auto;">';
     echo '<h1 style="font-size: 24px; font-weight: bold; color: #333; margin-bottom: 20px;">Godot Game Embedder</h1>';
@@ -66,8 +67,7 @@ function godot_game_admin_page() {
                 }
                 $validity = $index_found ? 'Valid' : 'Invalid';
                 echo '<tr><td>' . esc_html($game) . '</td><td>' . $validity . '</td>';
-                echo '<td><form method="post"><input type="hidden" name="game_name" value="' . esc_attr($game) . '">';
-                echo '<input type="submit" name="action-del" value="Delete" class="button button-secondary"></form></td></tr>';
+                echo '<td><button class="delete-button" data-game="' . esc_attr($game) . '">Delete</button></td></tr>';
             }
         } else {
             echo '<tr><td colspan="3">No games available.</td></tr>';
@@ -77,7 +77,7 @@ function godot_game_admin_page() {
     echo '</table>';
     echo '</div>';
 
-    // update table
+    // js
     echo '<script>
     document.getElementById("upload-button").addEventListener("click", function() {
         var form = document.getElementById("upload-form");
@@ -96,7 +96,7 @@ function godot_game_admin_page() {
             if (xhr.status === 200) {
                 var response = JSON.parse(xhr.responseText);
                 if (response.success) {
-                    alert("Upload successful!");
+                    alert("A successful upload! Probably verified game.html too! GJ!");
                     var table = document.getElementById("games-table").getElementsByTagName("tbody")[0];
                     var newRow = table.insertRow();
                     var nameCell = newRow.insertCell(0);
@@ -104,7 +104,8 @@ function godot_game_admin_page() {
                     var actionCell = newRow.insertCell(2);
                     nameCell.textContent = response.game_title;
                     validityCell.textContent = response.validity;
-                    actionCell.innerHTML = \'<form method="post"><input type="hidden" name="game_name" value="\' + response.game_title + \'"><input type="submit" name="action-del" value="Delete" class="button button-secondary"></form>\';
+                    actionCell.innerHTML = \'<button class="delete-button" data-game="\' + response.game_title + \'">Delete</button>\';
+                    bindDeleteButtons();
                 } else {
                     alert("Error: " + response.error);
                 }
@@ -114,6 +115,39 @@ function godot_game_admin_page() {
         };
 
         xhr.send(formData);
+    });
+
+    function bindDeleteButtons() {
+        var deleteButtons = document.getElementsByClassName("delete-button");
+        for (var i = 0; i < deleteButtons.length; i++) {
+            deleteButtons[i].addEventListener("click", function() {
+                var gameName = this.getAttribute("data-game");
+                var xhr = new XMLHttpRequest();
+                xhr.open("POST", "' . admin_url('admin-ajax.php?action=godot_game_delete') . '", true);
+                xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+
+                xhr.onload = function() {
+                    if (xhr.status === 200) {
+                        var response = JSON.parse(xhr.responseText);
+                        if (response.success) {
+                            alert(response.success);
+                            var row = document.querySelector("button[data-game=\'" + gameName + "\']").parentNode.parentNode;
+                            row.parentNode.removeChild(row);
+                        } else {
+                            alert("Error: " + response.error);
+                        }
+                    } else {
+                        alert("An error occurred while deleting the game. Please try again.");
+                    }
+                };
+
+                xhr.send("game_name=" + encodeURIComponent(gameName));
+            });
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        bindDeleteButtons();
     });
     </script>';
 }

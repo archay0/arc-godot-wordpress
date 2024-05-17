@@ -1,10 +1,17 @@
 <?php
 
-function godot_game_handle_delete($game_name) {
-    $game_dir = GODOT_GAMES_DIR . '/' . sanitize_title($game_name);
-    
+function godot_game_handle_delete() {
+    // Check for the game_name parameter in the AJAX request
+    $game_name = isset($_POST['game_name']) ? sanitize_title($_POST['game_name']) : '';
+
+    if (empty($game_name)) {
+        echo json_encode(['error' => 'Game name is required.']);
+        wp_die();
+    }
+
+    $game_dir = GODOT_GAMES_DIR . '/' . $game_name;
+
     if (is_dir($game_dir)) {
-        
         $files = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($game_dir, RecursiveDirectoryIterator::SKIP_DOTS),
             RecursiveIteratorIterator::CHILD_FIRST
@@ -17,12 +24,10 @@ function godot_game_handle_delete($game_name) {
 
         rmdir($game_dir);
 
-        echo '<p style="color: green;">Game ' . esc_html($game_name) . ' deleted successfully.</p>';
-        
-        echo '<script>window.location.href = "' . esc_url(admin_url('admin.php?page=godot-game-embedder')) . '";</script>';
+        echo json_encode(['success' => 'Game ' . esc_html($game_name) . ' deleted successfully.']);
     } else {
-        echo '<p style="color: red;">Failed to delete the game. Directory not found.</p>';
+        echo json_encode(['error' => 'Failed to delete the game. Directory not found.']);
     }
+    wp_die();
 }
-
 
