@@ -8,7 +8,7 @@ Author: Archay Inc.
 Author URI: https://srujanlok.org/archay
 */
 
-defined('ABSPATH') or die('Access denied!');
+defined('ABSPATH') or die('Permission Issue, go back to coding.');
 
 define('GODOT_GAMES_DIR', WP_CONTENT_DIR . '/godot_games/');
 
@@ -26,7 +26,6 @@ require_once(plugin_dir_path(__FILE__) . 'workers/delete.php');
 // setup code for scripts and shit
 add_action('wp_ajax_godot_game_upload', 'godot_game_handle_upload');
 
-
 function godot_game_admin_page() {
     echo '<div class="wrap" style="padding: 20px; background-color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 960px; margin: 20px auto;">';
     echo '<h1 style="font-size: 24px; font-weight: bold; color: #333; margin-bottom: 20px;">Godot Game Embedder</h1>';
@@ -39,7 +38,7 @@ function godot_game_admin_page() {
         th { background-color: #f4f4f4; }
     </style>';
 
-    // Upload form
+    // form
     echo '<form id="upload-form" method="post" enctype="multipart/form-data">';
     echo '<input type="text" name="game_title" id="game_title" placeholder="Game Title" required class="godot-input">';
     echo '<input type="file" name="godot_game_zip" id="godot_game_zip" required class="godot-input">';
@@ -47,29 +46,38 @@ function godot_game_admin_page() {
     echo '<input type="button" id="upload-button" value="Upload .zip" class="godot-button button button-primary">';
     echo '</form>';
 
-    // List of games
+    // list
+    echo '<h2 style="font-size: 20px; color: #555; margin-bottom: 10px;">Uploaded Games</h2>';
+    echo '<table id="games-table">';
+    echo '<thead><tr><th>Name</th><th>Validity</th><th>Action</th></tr></thead>';
+    echo '<tbody>';
     if ($games = scandir(GODOT_GAMES_DIR)) {
         $games = array_diff($games, ['..', '.']);
         if (!empty($games)) {
-            echo '<h2 style="font-size: 20px; color: #555; margin-bottom: 10px;">Uploaded Games</h2>';
-            echo '<table>';
-            echo '<thead><tr><th>Name</th><th>Validity</th><th>Action</th></tr></thead>';
-            echo '<tbody>';
             foreach ($games as $game) {
                 $game_dir = GODOT_GAMES_DIR . '/' . $game;
-                $index_exists = file_exists($game_dir . '/game.html') ? 'Valid' : 'Invalid';
-                echo '<tr><td>' . esc_html($game) . '</td><td>' . $index_exists . '</td>';
+                $index_found = false;
+                $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($game_dir, RecursiveDirectoryIterator::SKIP_DOTS));
+                foreach ($iterator as $file) {
+                    if (strtolower($file->getFilename()) === 'game.html') {
+                        $index_found = true;
+                        break;
+                    }
+                }
+                $validity = $index_found ? 'Valid' : 'Invalid';
+                echo '<tr><td>' . esc_html($game) . '</td><td>' . $validity . '</td>';
                 echo '<td><form method="post"><input type="hidden" name="game_name" value="' . esc_attr($game) . '">';
                 echo '<input type="submit" name="action-del" value="Delete" class="button button-secondary"></form></td></tr>';
             }
-            echo '</tbody>';
-            echo '</table>';
         } else {
-            echo '<p>No games available.</p>';
+            echo '<tr><td colspan="3">No games available.</td></tr>';
         }
     }
+    echo '</tbody>';
+    echo '</table>';
     echo '</div>';
 
+    // update table
     echo '<script>
     document.getElementById("upload-button").addEventListener("click", function() {
         var form = document.getElementById("upload-form");
@@ -89,6 +97,14 @@ function godot_game_admin_page() {
                 var response = JSON.parse(xhr.responseText);
                 if (response.success) {
                     alert("Upload successful!");
+                    var table = document.getElementById("games-table").getElementsByTagName("tbody")[0];
+                    var newRow = table.insertRow();
+                    var nameCell = newRow.insertCell(0);
+                    var validityCell = newRow.insertCell(1);
+                    var actionCell = newRow.insertCell(2);
+                    nameCell.textContent = response.game_title;
+                    validityCell.textContent = response.validity;
+                    actionCell.innerHTML = \'<form method="post"><input type="hidden" name="game_name" value="\' + response.game_title + \'"><input type="submit" name="action-del" value="Delete" class="button button-secondary"></form>\';
                 } else {
                     alert("Error: " + response.error);
                 }
@@ -101,8 +117,6 @@ function godot_game_admin_page() {
     });
     </script>';
 }
-
-
 function godot_game_shortcode($atts) {
     $atts = shortcode_atts(array(
         'arc_embed' => ''

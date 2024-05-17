@@ -1,5 +1,6 @@
 <?php
 
+
 function godot_game_handle_upload() {
     // Ensure the necessary file handling function is available
     if (!function_exists('wp_handle_upload')) {
@@ -43,16 +44,18 @@ function godot_game_handle_upload() {
                 foreach ($iterator as $file) {
                     if (strtolower($file->getFilename()) === 'game.html') {
                         $index_found = true;
-                        $index_path = $file->getPathname();
                         break;
                     }
                 }
 
-                if ($index_found) {
-                    echo json_encode(['success' => 'Game uploaded and unpacked successfully.', 'path' => esc_html($game_dir)]);
-                } else {
-                    echo json_encode(['error' => 'Game is invalid. \'game.html\' not found in any subdirectories.']);
-                }
+                $validity = $index_found ? 'Valid' : 'Invalid';
+
+                echo json_encode([
+                    'success' => 'Game uploaded and unpacked successfully.',
+                    'path' => esc_html($game_dir),
+                    'game_title' => esc_html($game_title),
+                    'validity' => $validity
+                ]);
             } else {
                 echo json_encode(['error' => 'Failed to unzip the game.']);
             }
