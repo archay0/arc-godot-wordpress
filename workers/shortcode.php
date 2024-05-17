@@ -6,7 +6,7 @@ function godot_game_shortcode($atts) {
     ), $atts, 'godot_game');
 
     $gameSlug = sanitize_title($atts['arc_embed']);
-    $gameDirectory = WP_PLUGIN_DIR . '/godot-game-embedder/godot-games/' . $gameSlug;
+    $gameDirectory = WP_CONTENT_DIR . '/godot_games/' . $gameSlug;
 
     // Security check for directory traversal
     if (strpos($gameSlug, '..') !== false || strpos($gameSlug, '/') !== false) {
@@ -21,7 +21,7 @@ function godot_game_shortcode($atts) {
         foreach ($iterator as $file) {
             if (strtolower($file->getFilename()) === 'game.html') {
                 $gameHTMLFound = true;
-                $gamePath = plugins_url('godot-games/' . $gameSlug . '/' . $file->getFilename(), __FILE__);
+                $gamePath = content_url('godot_games/' . $gameSlug . '/' . $file->getFilename());
                 break;
             }
         }

@@ -33,7 +33,6 @@ add_action('wp_ajax_godot_game_delete', 'godot_game_handle_delete');
 
 add_shortcode('godot_game', 'godot_game_shortcode');
 
-
 function godot_game_admin_page() {
     echo '<div class="wrap" style="padding: 20px; background-color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 960px; margin: 20px auto;">';
     echo '<h1 style="font-size: 24px; font-weight: bold; color: #333; margin-bottom: 20px;">Godot Game Embedder</h1>';
@@ -54,16 +53,16 @@ function godot_game_admin_page() {
     echo '<input type="button" id="upload-button" value="Upload .zip" class="godot-button button button-primary">';
     echo '</form>';
 
-    // list
+    // List 
     echo '<h2 style="font-size: 20px; color: #555; margin-bottom: 10px;">Uploaded Games</h2>';
     echo '<table id="games-table">';
     echo '<thead><tr><th>Name</th><th>Validity</th><th>Action</th></tr></thead>';
     echo '<tbody>';
-    if ($games = scandir(GODOT_GAMES_DIR)) {
+    if ($games = scandir(WP_CONTENT_DIR . '/godot_games')) {
         $games = array_diff($games, ['..', '.']);
         if (!empty($games)) {
             foreach ($games as $game) {
-                $game_dir = GODOT_GAMES_DIR . '/' . $game;
+                $game_dir = WP_CONTENT_DIR . '/godot_games/' . $game;
                 $index_found = false;
                 $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($game_dir, RecursiveDirectoryIterator::SKIP_DOTS));
                 foreach ($iterator as $file) {
@@ -103,14 +102,14 @@ function godot_game_admin_page() {
             if (xhr.status === 200) {
                 var response = JSON.parse(xhr.responseText);
                 if (response.success) {
-                    alert("A successful upload! Probably verified game.html too! GJ!");
+                    alert("Upload successful!");
                     var table = document.getElementById("games-table").getElementsByTagName("tbody")[0];
                     var newRow = table.insertRow();
                     var nameCell = newRow.insertCell(0);
                     var validityCell = newRow.insertCell(1);
                     var actionCell = newRow.insertCell(2);
                     nameCell.textContent = response.game_title;
-                    validityCell.textContent = response.validity;
+                    validityCell.textContent = "Valid";
                     actionCell.innerHTML = \'<button class="delete-button" data-game="\' + response.game_title + \'">Delete</button>\';
                     bindDeleteButtons();
                 } else {
@@ -158,6 +157,10 @@ function godot_game_admin_page() {
     });
     </script>';
 }
+
+add_action('admin_menu', function() {
+    add_menu_page('Godot Game Embedder', 'Godot Game Embedder', 'manage_options', 'godot-game-embedder', 'godot_game_admin_page');
+});
 
 
 
