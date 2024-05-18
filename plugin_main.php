@@ -54,6 +54,7 @@ function godot_game_admin_page() {
     echo '</form>';
 
     // List 
+    echo '<input type="hidden" id="godot_game_delete_nonce" value="' . wp_create_nonce('godot_game_delete_action') . '">';
     echo '<h2 style="font-size: 20px; color: #555; margin-bottom: 10px;">Uploaded Games</h2>';
     echo '<table id="games-table">';
     echo '<thead><tr><th>Name</th><th>Validity</th><th>Action</th></tr></thead>';
@@ -122,13 +123,15 @@ function godot_game_admin_page() {
 
     function bindDeleteButtons() {
         var deleteButtons = document.getElementsByClassName("delete-button");
+        var nonce = document.getElementById("godot_game_delete_nonce").value; // Get nonce value
+    
         for (var i = 0; i < deleteButtons.length; i++) {
             deleteButtons[i].addEventListener("click", function() {
                 var gameName = this.getAttribute("data-game");
                 var xhr = new XMLHttpRequest();
-                xhr.open("POST", "' . admin_url('admin-ajax.php?action=godot_game_delete') . '", true);
+                xhr.open("POST", "' . admin_url('admin-ajax.php') . '", true);
                 xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-
+    
                 xhr.onload = function() {
                     if (xhr.status === 200) {
                         var response = JSON.parse(xhr.responseText);
@@ -143,11 +146,13 @@ function godot_game_admin_page() {
                         alert("An error occurred while deleting the game. Please try again.");
                     }
                 };
-
-                xhr.send("game_name=" + encodeURIComponent(gameName));
+    
+                xhr.send("action=godot_game_delete&game_name=" + encodeURIComponent(gameName) + "&_wpnonce=" + encodeURIComponent(nonce));
             });
         }
     }
+    
+    
 
     document.addEventListener("DOMContentLoaded", function() {
         bindDeleteButtons();

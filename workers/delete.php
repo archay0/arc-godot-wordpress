@@ -1,7 +1,8 @@
 <?php
 
 function godot_game_handle_delete() {
-    // Check for the game_name parameter in the AJAX request
+    check_ajax_referer('godot_game_delete_action', '_wpnonce'); // Nonce verification
+
     $game_name = isset($_POST['game_name']) ? sanitize_title($_POST['game_name']) : '';
 
     if (empty($game_name)) {
@@ -30,4 +31,3 @@ function godot_game_handle_delete() {
     }
     wp_die();
 }
-
