@@ -88,7 +88,10 @@ function godot_game_admin_page() {
                 var response = JSON.parse(xhr.responseText);
                 if (response.success) {
                     alert("Upload successful!");
-                    // Optionally update the table here without page reload
+                    var newGameRow = document.createElement("tr");
+                    newGameRow.innerHTML = "<td>" + response.game_title + "</td><td>Valid</td><td><button class='button delete-button' data-game='" + response.game_title + "'>Delete</button></td>";
+                    document.getElementById("games-table").appendChild(newGameRow);
+                    bindDeleteButtons(); // Rebind delete buttons to new elements
                 } else {
                     alert("Error: " + response.error);
                 }
@@ -99,30 +102,38 @@ function godot_game_admin_page() {
         xhr.send(formData);
     });
 
-    document.querySelectorAll('.delete-button').forEach(button => {
-        button.addEventListener('click', function() {
-            var gameName = this.getAttribute('data-game');
-            var xhr = new XMLHttpRequest();
-            xhr.open("POST", "<?php echo admin_url('admin-ajax.php?action=godot_game_delete'); ?>", true);
-            xhr.onload = function() {
-                if (xhr.status === 200) {
-                    var response = JSON.parse(xhr.responseText);
-                    if (response.success) {
-                        alert("Game deleted successfully");
-                        button.parentNode.parentNode.remove();
+    function bindDeleteButtons() {
+        document.querySelectorAll('.delete-button').forEach(button => {
+            button.addEventListener('click', function() {
+                var gameName = this.getAttribute('data-game');
+                var xhr = new XMLHttpRequest();
+                xhr.open("POST", "<?php echo admin_url('admin-ajax.php?action=godot_game_delete'); ?>", true);
+                xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                xhr.onload = function() {
+                    if (xhr.status === 200) {
+                        var response = JSON.parse(xhr.responseText);
+                        if (response.success) {
+                            alert("Game deleted successfully");
+                            button.parentNode.parentNode.remove();
+                        } else {
+                            alert("Error: " + response.error);
+                        }
                     } else {
-                        alert("Error: " + response.error);
+                        alert("An error occurred while deleting the game.");
                     }
-                } else {
-                    alert("An error occurred while deleting the game.");
-                }
-            };
-            xhr.send("action=godot_game_delete&game_name=" + encodeURIComponent(gameName));
+                };
+                xhr.send("game_name=" + encodeURIComponent(gameName));
+            });
         });
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        bindDeleteButtons();
     });
     </script>
     <?php
 }
+
 
 add_action('admin_menu', function() {
     add_menu_page('Arc Godot', 'Godot Games', 'manage_options', 'godot-game-embedder', 'godot_game_admin_page', 'dashicons-games');
