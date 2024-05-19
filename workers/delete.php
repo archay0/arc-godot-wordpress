@@ -1,7 +1,7 @@
 <?php
 
 function godot_game_handle_delete() {
-    check_ajax_referer('godot_game_delete_action', '_wpnonce'); // Nonce verification
+    check_ajax_referer('godot_game_delete_action', '_wpnonce'); // Nonce verification for security.
 
     $game_name = isset($_POST['game_name']) ? sanitize_title($_POST['game_name']) : '';
 
@@ -24,7 +24,6 @@ function godot_game_handle_delete() {
         }
 
         rmdir($game_dir);
-
         echo json_encode(['success' => 'Game ' . esc_html($game_name) . ' deleted successfully.']);
     } else {
         echo json_encode(['error' => 'Failed to delete the game. Directory not found.']);

@@ -72,65 +72,65 @@ function godot_game_admin_page() {
         </table>
     </div>
     <script>
-    document.getElementById("upload-button").addEventListener("click", function() {
-        var form = document.getElementById("upload-form");
-        var formData = new FormData(form);
-        var xhr = new XMLHttpRequest();
-        xhr.open("POST", "<?php echo admin_url('admin-ajax.php?action=godot_game_upload'); ?>", true);
-        xhr.upload.onprogress = function(event) {
-            if (event.lengthComputable) {
-                var percentComplete = (event.loaded / event.total) * 100;
-                document.getElementById("progress-bar").value = percentComplete;
-            }
-        };
-        xhr.onload = function() {
-            if (xhr.status === 200) {
-                var response = JSON.parse(xhr.responseText);
-                if (response.success) {
-                    alert("Upload successful!");
-                    var newGameRow = document.createElement("tr");
-                    newGameRow.innerHTML = "<td>" + response.game_title + "</td><td>Valid</td><td><button class='button delete-button' data-game='" + response.game_title + "'>Delete</button></td>";
-                    document.getElementById("games-table").appendChild(newGameRow);
-                    bindDeleteButtons(); // Rebind delete buttons to new elements
-                } else {
-                    alert("Error: " + response.error);
-                }
+document.getElementById("upload-button").addEventListener("click", function() {
+    var form = document.getElementById("upload-form");
+    var formData = new FormData(form);
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", "<?php echo admin_url('admin-ajax.php?action=godot_game_upload'); ?>", true);
+    xhr.upload.onprogress = function(event) {
+        if (event.lengthComputable) {
+            var percentComplete = (event.loaded / event.total) * 100;
+            document.getElementById("progress-bar").value = percentComplete;
+        }
+    };
+    xhr.onload = function() {
+        if (xhr.status === 200) {
+            var response = JSON.parse(xhr.responseText);
+            if (response.success) {
+                alert("Upload successful!");
+                var newGameRow = document.createElement("tr");
+                newGameRow.innerHTML = "<td>" + response.game_title + "</td><td>Valid</td><td><button class='button delete-button' data-game='" + response.game_title + "'>Delete</button></td>";
+                document.getElementById("games-table").appendChild(newGameRow);
+                bindDeleteButtons();
             } else {
-                alert("An error occurred during the upload. Please try again.");
+                alert("Error: " + response.error);
             }
-        };
-        xhr.send(formData);
-    });
-
-    function bindDeleteButtons() {
-        document.querySelectorAll('.delete-button').forEach(button => {
-    button.addEventListener('click', function() {
-        var gameName = this.getAttribute('data-game');
-        var xhr = new XMLHttpRequest();
-        xhr.open("POST", "<?php echo admin_url('admin-ajax.php'); ?>", true);
-        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-        xhr.onload = function() {
-            if (xhr.status === 200) {
-                var response = JSON.parse(xhr.responseText);
-                if (response.success) {
-                    alert("Game deleted successfully");
-                    button.parentNode.parentNode.remove();
-                } else {
-                    alert("Error: " + response.error);
-                }
-            } else {
-                alert("An error occurred while deleting the game.");
-            }
-        };
-        xhr.send("action=godot_game_delete&game_name=" + encodeURIComponent(gameName) + "&_wpnonce=" + "<?php echo wp_create_nonce('godot_game_delete_action'); ?>");
-    });
+        } else {
+            alert("An error occurred during the upload. Please try again.");
+        }
+    };
+    xhr.send(formData);
 });
-    }
 
-    document.addEventListener("DOMContentLoaded", function() {
-        bindDeleteButtons();
+function bindDeleteButtons() {
+    document.querySelectorAll('.delete-button').forEach(button => {
+        button.addEventListener('click', function() {
+            var gameName = this.getAttribute('data-game');
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "<?php echo admin_url('admin-ajax.php?action=godot_game_delete'); ?>", true);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    var response = JSON.parse(xhr.responseText);
+                    if (response.success) {
+                        alert("Game deleted successfully");
+                        button.parentNode.parentNode.remove();
+                    } else {
+                        alert("Error: " + response.error);
+                    }
+                } else {
+                    alert("An error occurred while deleting the game.");
+                }
+            };
+            xhr.send("action=godot_game_delete&game_name=" + encodeURIComponent(gameName) + "&_wpnonce=" + "<?php echo wp_create_nonce('godot_game_delete_action'); ?>");
+        });
     });
-    </script>
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    bindDeleteButtons();
+});
+</script>
     <?php
 }
 
