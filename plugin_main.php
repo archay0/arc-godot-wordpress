@@ -104,27 +104,27 @@ function godot_game_admin_page() {
 
     function bindDeleteButtons() {
         document.querySelectorAll('.delete-button').forEach(button => {
-            button.addEventListener('click', function() {
-                var gameName = this.getAttribute('data-game');
-                var xhr = new XMLHttpRequest();
-                xhr.open("POST", "<?php echo admin_url('admin-ajax.php?action=godot_game_delete'); ?>", true);
-                xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-                xhr.onload = function() {
-                    if (xhr.status === 200) {
-                        var response = JSON.parse(xhr.responseText);
-                        if (response.success) {
-                            alert("Game deleted successfully");
-                            button.parentNode.parentNode.remove();
-                        } else {
-                            alert("Error: " + response.error);
-                        }
-                    } else {
-                        alert("An error occurred while deleting the game.");
-                    }
-                };
-                xhr.send("game_name=" + encodeURIComponent(gameName));
-            });
-        });
+    button.addEventListener('click', function() {
+        var gameName = this.getAttribute('data-game');
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "<?php echo admin_url('admin-ajax.php'); ?>", true);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                var response = JSON.parse(xhr.responseText);
+                if (response.success) {
+                    alert("Game deleted successfully");
+                    button.parentNode.parentNode.remove();
+                } else {
+                    alert("Error: " + response.error);
+                }
+            } else {
+                alert("An error occurred while deleting the game.");
+            }
+        };
+        xhr.send("action=godot_game_delete&game_name=" + encodeURIComponent(gameName) + "&_wpnonce=" + "<?php echo wp_create_nonce('godot_game_delete_action'); ?>");
+    });
+});
     }
 
     document.addEventListener("DOMContentLoaded", function() {
